@@ -1,26 +1,25 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI()
+messages = {}
 
-class Item(BaseModel):
-    name: str
-    description: str | None = None
-    price: float
-    tax: float | None = None
+class Message(BaseModel):
+    id: int | None = 0
+    author: str
+    content: str
     tags: list[str] = []
 
-items = [Item(name="Portal Gun", price=42.0),
-        Item(name="Plumbus", price=32.0)]
+@app.post("/messages/", response_model=Message)
+async def create_message(message: Message) -> Message:
+    new_id = max(messages.keys(), default=0) + 1
+    if new_id in messages:
+        raise HTTPException(status_code=400, detail="Message with this id alredy exists")
+    new_message = Message(id=new_id, author=message.author, content=message.content, tags=message.tags)
+    messages[new_id] = new_message
+    return messages[new_id]
 
-@app.post("/items/")
-async def create_item(item: Item) -> Item:
-    if item.name not in {items[i].name for i in range(len(items))}:
-        items.append(item)
-    return item
-
-
-@app.get("/items/")
-async def read_items() -> list[Item]:
-    return items
+@app.get("/messages/")
+async def read_items() -> messages:
+    return messages
 
